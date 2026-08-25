@@ -1,137 +1,131 @@
 # TranslateHotkey
 
-A macOS menu bar utility: put your cursor in any text field, press a global
-hotkey, and the text is selected, translated by an LLM (any OpenAI-compatible
-API), and replaced in place.
+一个 macOS 菜单栏小工具：把光标放进任意输入框，按下全局快捷键，
+文本会被自动全选、经由大模型（任何兼容 OpenAI 接口的服务）翻译，
+并就地替换。
 
-Typical use: draft a message in Chinese in Slack / mail / a browser, press
-`⌥⌘T`, and the draft becomes English — without leaving the input box.
+典型场景：在 Slack、邮件或浏览器里用中文写好一段话，按 `⌥⌘T`，
+草稿立刻变成英文——全程不用离开输入框。
 
-## How it works
+## 工作原理
 
-1. The global hotkey fires (default `⌥⌘T`, changeable in Settings).
-2. The app waits for you to release the modifier keys, then synthesizes
-   `⌘A` + `⌘C` in the frontmost app to capture the field's text.
-3. The text is sent to the configured `/chat/completions` endpoint with your
-   translation prompt.
-4. The result is pasted back with `⌘V`, replacing the selection.
-5. Your original clipboard contents are restored about a second later.
+1. 全局快捷键触发（默认 `⌥⌘T`，可在设置中修改）。
+2. 应用等待你松开修饰键，然后向最前面的 App 模拟
+   `⌘A` + `⌘C`，抓取输入框内的文本。
+3. 文本连同你的翻译提示词一起发送到配置好的 `/chat/completions` 接口。
+4. 结果通过 `⌘V` 粘贴回去，替换掉选中的内容。
+5. 大约一秒后，你原本的剪贴板内容会被恢复。
 
-While translating, the menu bar icon switches to a busy state; errors beep
-and appear as a status line inside the menu.
+翻译过程中，菜单栏图标会切换为忙碌状态；出错时会响一声提示音，
+并在菜单里以状态行的形式显示错误信息。
 
-The menu bar menu also offers:
+菜单栏菜单还提供：
 
-- **Restore Original Text** — undo the last translation: puts the
-  pre-translation text back into the focused field (enabled after each
-  successful translation).
-- **Target Language** submenu — switch the target language on the fly
-  without opening Settings; the current language is checkmarked.
+- **恢复原文** —— 撤销上一次翻译：把翻译前的文本放回当前输入框
+  （每次翻译成功后启用）。
+- **目标语言** 子菜单 —— 无需打开设置即可随时切换目标语言，
+  当前语言带勾选标记。
 
-## Interface languages
+## 界面语言
 
-The app UI (menu, settings, status and error messages) is available in
-English, 简体中文, 日本語, and 한국어. By default it follows the macOS system
-language; pick a specific one in Settings → General → Interface language.
-The switch applies immediately — no relaunch needed.
+应用界面（菜单、设置、状态与错误信息）支持
+English、简体中文、日本語、한국어。默认跟随 macOS 系统语言；
+也可以在 设置 → 通用 → 界面语言 中指定。
+切换后立即生效——无需重启。
 
-## Requirements
+## 系统要求
 
-- macOS 13 (Ventura) or newer
-- Xcode Command Line Tools: `xcode-select --install`
-- An API key for any OpenAI-compatible provider (or a local model server)
+- macOS 13 (Ventura) 或更高版本
+- Xcode 命令行工具：`xcode-select --install`
+- 任意兼容 OpenAI 接口的服务的 API Key（或本地模型服务）
 
-## Build & install
+## 构建与安装
 
 ```bash
-cd ~/Project/TranslatePlugin
-chmod +x build_app.sh
+git clone https://github.com/TgolMsk/TranslateHotkey.git
+cd TranslateHotkey
 ./build_app.sh
 mv build/TranslateHotkey.app /Applications/
 open /Applications/TranslateHotkey.app
 ```
 
-On first launch:
+首次启动时：
 
-1. macOS asks for **Accessibility** permission (needed to synthesize
-   keystrokes). Enable *TranslateHotkey* in
-   System Settings → Privacy & Security → Accessibility.
-   If the toggle was set while the app was running, quit and relaunch it.
-2. The Settings window opens automatically because no API key is set yet.
-   Fill in the base URL, API key, and model, then click **Test translation**.
+1. macOS 会请求 **辅助功能** 权限（模拟按键所必需）。请在
+   系统设置 → 隐私与安全性 → 辅助功能 中启用 *TranslateHotkey*。
+   如果是在应用运行期间才打开该开关，请退出并重新启动应用。
+2. 由于尚未设置 API Key，设置窗口会自动打开。
+   填入 Base URL、API Key 和模型，然后点击 **测试翻译**。
 
-## Configuration
+## 配置说明
 
-Everything is in the menu bar icon → **Settings…**, organized in three tabs:
-**API** (endpoint, key, model parameters, connection test), **Translation**
-(target language, prompt), and **General** (hotkey, interface language).
+所有配置都在 菜单栏图标 → **设置…** 中，分为三个标签页：
+**API**（接口地址、密钥、模型参数、连接测试）、**翻译**
+（目标语言、提示词）、**通用**（快捷键、界面语言）。
 
-| Setting | Notes |
+| 设置项 | 说明 |
 |---|---|
-| Base URL | Endpoint root, e.g. `https://api.deepseek.com/v1`. `/chat/completions` is appended automatically. |
-| API Key | Stored in the macOS Keychain, not in a plist. Empty key is allowed for localhost endpoints. |
-| Model | e.g. `deepseek-chat`, `qwen-plus`, `moonshot-v1-8k`, `gpt-4o-mini` |
-| Temperature | 0–2. Lower = more literal. 0.3 is a good default for translation. |
-| Max tokens | 0 = let the API decide. |
-| Timeout | Request timeout in seconds. |
-| Target language | Free text; presets provided. Injected into the prompt as `{target_language}`. |
-| Translation prompt | The system prompt. `{target_language}` is substituted; the captured text is sent as the user message. |
-| Global hotkey | Click the button, press a new combination (must include ⌘, ⌥, or ⌃). Esc cancels. |
+| Base URL | 接口根地址，例如 `https://api.deepseek.com/v1`，`/chat/completions` 会自动追加。 |
+| API Key | 保存在 macOS 钥匙串中，而非 plist 文件。本地（localhost）接口允许留空。 |
+| 模型 | 例如 `deepseek-chat`、`qwen-plus`、`moonshot-v1-8k`、`gpt-4o-mini` |
+| 温度 | 0–2。越低越直译，翻译场景建议 0.3。 |
+| 最大 Token 数 | 0 表示交由接口自行决定。 |
+| 超时 | 请求超时时间，单位为秒。 |
+| 目标语言 | 自由填写，也提供预设。会以 `{target_language}` 注入提示词。 |
+| 翻译提示词 | 即系统提示词。其中 `{target_language}` 会被替换；抓取到的文本作为用户消息发送。 |
+| 全局快捷键 | 点击按钮后按下新的组合键（必须包含 ⌘、⌥ 或 ⌃）。按 Esc 取消。 |
 
-### Common OpenAI-compatible endpoints
+### 常见的 OpenAI 兼容接口
 
-| Provider | Base URL | Example model |
+| 服务商 | Base URL | 示例模型 |
 |---|---|---|
 | DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
-| Qwen (DashScope) | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus` |
-| Moonshot | `https://api.moonshot.cn/v1` | `moonshot-v1-8k` |
-| Zhipu GLM | `https://open.bigmodel.cn/api/paas/v4` | `glm-4-air` |
+| 通义千问（DashScope） | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus` |
+| 月之暗面 Moonshot | `https://api.moonshot.cn/v1` | `moonshot-v1-8k` |
+| 智谱 GLM | `https://open.bigmodel.cn/api/paas/v4` | `glm-4-air` |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
-| Ollama (local) | `http://localhost:11434/v1` | `qwen2.5:7b` |
-| LM Studio (local) | `http://localhost:1234/v1` | (loaded model) |
+| Ollama（本地） | `http://localhost:11434/v1` | `qwen2.5:7b` |
+| LM Studio（本地） | `http://localhost:1234/v1` | （已加载的模型） |
 
-## Behavior details & limitations
+## 行为细节与限制
 
-- **Select all**: the hotkey translates the *entire* input field (`⌘A`), which
-  matches the "translate what I typed" workflow. Fields where `⌘A` does not
-  mean "select all text" (e.g. a file browser) will misbehave — only trigger
-  it with the cursor in a text field.
-- **Clipboard**: the previous clipboard contents (including rich content) are
-  saved and restored automatically ~1 s after the paste.
-- **Password fields / Secure Keyboard Entry**: macOS blocks synthetic input
-  there by design; nothing will happen.
-- **Re-entrancy**: pressing the hotkey while a translation is running is
-  ignored.
-- **Launch at Login**: available in the menu (works when running from the
-  `.app` bundle, ideally from `/Applications`).
+- **全选**：快捷键翻译的是*整个*输入框的内容（`⌘A`），这与
+  "翻译我刚写的东西"这一使用习惯一致。在 `⌘A` 并非"全选文本"的
+  场景下（例如访达文件列表）会出现异常——请只在光标位于文本输入框时触发。
+- **剪贴板**：原有的剪贴板内容（包括富文本）会被保存，
+  并在粘贴约 1 秒后自动恢复。
+- **密码框 / 安全键盘输入**：macOS 出于设计会屏蔽此处的模拟输入，
+  因此不会有任何反应。
+- **重入**：翻译进行中再次按下快捷键会被忽略。
+- **开机自启动**：在菜单中提供（需从 `.app` 包运行，
+  建议放在 `/Applications` 目录下）。
 
-## Troubleshooting
+## 疑难排查
 
-- **Hotkey does nothing** → Check Accessibility permission; after a rebuild,
-  remove the app from the Accessibility list and re-add it (the ad-hoc code
-  signature changes on every build), then relaunch.
-- **"Could not register hotkey"** in the menu → the combination is taken by
-  another app or by macOS; record a different one.
-- **API errors** → use *Test translation* in Settings; the raw API message is
-  shown. Check the base URL (many providers need the `/v1` suffix) and that
-  the model name is valid for that provider.
-- **Text pasted but garbled formatting** → the app pastes plain text; rich
-  formatting of the original is not preserved (by design — input boxes are
-  usually plain text).
+- **快捷键无反应** → 检查辅助功能权限；重新构建之后，请把应用从
+  辅助功能列表中移除再重新添加（每次构建的 ad-hoc 签名都会变化），
+  然后重启应用。
+- **菜单里出现"无法注册快捷键"** → 该组合键已被其他应用或
+  macOS 占用，请换一个。
+- **API 报错** → 使用设置中的*测试翻译*，会显示接口返回的原始信息。
+  检查 Base URL（很多服务商需要 `/v1` 后缀），以及模型名称
+  对该服务商是否有效。
+- **粘贴后格式错乱** → 应用粘贴的是纯文本，不保留原文的富文本格式
+  （这是有意为之——输入框通常都是纯文本）。
 
-## Project layout
+## 项目结构
 
 ```
-Package.swift                 Swift Package Manager manifest
-build_app.sh                  builds .app bundle (ad-hoc signed)
-Resources/Info.plist          bundle metadata (LSUIElement = menu bar only)
+Package.swift                 Swift Package Manager 清单
+build_app.sh                  构建 .app 包（ad-hoc 签名）
+Resources/Info.plist          包元数据（LSUIElement = 仅菜单栏）
 Sources/TranslateHotkey/
-  main.swift                  entry point
-  AppDelegate.swift           menu bar UI + translation flow orchestration
-  HotkeyManager.swift         Carbon global hotkey registration
-  TextCapture.swift           ⌘A/⌘C/⌘V synthesis, clipboard snapshot/restore
-  Translator.swift            OpenAI-compatible chat-completions client
-  AppSettings.swift           settings store (UserDefaults + Keychain)
-  SettingsView.swift          SwiftUI settings window (tabbed) + hotkey recorder
-  Localization.swift          UI string tables (EN / 简体中文 / 日本語 / 한국어)
+  main.swift                  程序入口
+  AppDelegate.swift           菜单栏 UI + 翻译流程编排
+  HotkeyManager.swift         基于 Carbon 的全局快捷键注册
+  TextCapture.swift           ⌘A/⌘C/⌘V 模拟、剪贴板快照与恢复
+  Translator.swift            OpenAI 兼容的 chat-completions 客户端
+  AppSettings.swift           设置存储（UserDefaults + 钥匙串）
+  SettingsView.swift          SwiftUI 设置窗口（分页）+ 快捷键录制
+  Localization.swift          界面字符串表（EN / 简体中文 / 日本語 / 한국어）
 ```
